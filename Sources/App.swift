@@ -34,14 +34,12 @@ struct WebView: UIViewRepresentable {
     class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         weak var webView: WKWebView?
 
-        // Autorise toutes les navigations, tous les sites.
         func webView(_ webView: WKWebView,
                      decidePolicyFor action: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             decisionHandler(.allow)
         }
 
-        // Accepte aussi les certificats SSL invalides (serveurs de flux mal configurés).
         func webView(_ webView: WKWebView,
                      didReceive challenge: URLAuthenticationChallenge,
                      completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
@@ -53,7 +51,6 @@ struct WebView: UIViewRepresentable {
             }
         }
 
-        // Liens target="_blank" / window.open : ouverts dans la même vue.
         func webView(_ webView: WKWebView,
                      createWebViewWith configuration: WKWebViewConfiguration,
                      for action: WKNavigationAction,
@@ -64,13 +61,69 @@ struct WebView: UIViewRepresentable {
     }
 }
 
+struct SplashView: View {
+    @State private var reveal: CGFloat = 0
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 24) {
+                Image("Logo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 140, height: 140)
+                    .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+
+                Text("Infralink TV")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundColor(.white)
+                    .mask(
+                        GeometryReader { geo in
+                            Rectangle()
+                                .frame(width: geo.size.width * reveal, height: geo.size.height)
+                                .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                        }
+                    )
+            }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.0).delay(0.3)) {
+                reveal = 1
+            }
+        }
+    }
+}
+
+struct RootView: View {
+    @State private var showSplash = true
+
+    var body: some View {
+        ZStack {
+            WebView()
+                .ignoresSafeArea()
+                .background(Color.black)
+
+            if showSplash {
+                SplashView()
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.3) {
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    showSplash = false
+                }
+            }
+        }
+    }
+}
+
 @main
 struct SiteApp: App {
     var body: some Scene {
         WindowGroup {
-            WebView()
-                .ignoresSafeArea()
-                .background(Color.black)
+            RootView()
         }
     }
 }
