@@ -5,8 +5,13 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Voir les fichiers du dépôt
+        run: ls -la && cat project.yml
       - name: Générer le projet Xcode
-        run: brew install xcodegen && xcodegen
+        run: |
+          brew install xcodegen || true
+          xcodegen generate --spec project.yml
+          ls -la
       - name: Compiler
         run: |
           xcodebuild -project SiteApp.xcodeproj -scheme SiteApp \
