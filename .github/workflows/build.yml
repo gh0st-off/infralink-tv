@@ -9,13 +9,21 @@ jobs:
         run: |
           brew install xcodegen || true
           xcodegen generate --spec project.yml
-      - name: Redimensionner l'icône en 1024x1024
+      - name: Préparer l'icône et le logo
         run: |
           ICON=Sources/Assets.xcassets/AppIcon.appiconset/icon.png
           sips -z 1024 1024 "$ICON"
           sips -s format jpeg "$ICON" --out /tmp/icon.jpg
           sips -s format png /tmp/icon.jpg --out "$ICON"
-          sips -g pixelWidth -g pixelHeight "$ICON"
+
+          LOGO=Sources/Assets.xcassets/Logo.imageset
+          mkdir -p "$LOGO"
+          cp "$ICON" "$LOGO/logo.png"
+          echo '{"images":[{"filename":"logo.png","idiom":"universal"}],"info":{"author":"xcode","version":1}}' > "$LOGO/Contents.json"
+
+          COLOR=Sources/Assets.xcassets/LaunchBlack.colorset
+          mkdir -p "$COLOR"
+          echo '{"colors":[{"color":{"color-space":"srgb","components":{"red":"0","green":"0","blue":"0","alpha":"1"}},"idiom":"universal"}],"info":{"author":"xcode","version":1}}' > "$COLOR/Contents.json"
       - name: Compiler
         run: |
           xcodebuild -project SiteApp.xcodeproj -scheme SiteApp \
