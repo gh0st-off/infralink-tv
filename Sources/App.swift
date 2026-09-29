@@ -170,7 +170,46 @@ struct WebView: UIViewRepresentable {
             return nil
         }
 
-        // Remplissage automatique quand la page est chargée
+        // MARK: Popups JavaScript (alert / confirm / prompt)
+
+        func webView(_ webView: WKWebView,
+                     runJavaScriptAlertPanelWithMessage message: String,
+                     initiatedByFrame frame: WKFrameInfo,
+                     completionHandler: @escaping () -> Void) {
+            guard let top = Self.topController() else { completionHandler(); return }
+            let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
+            top.present(alert, animated: true)
+        }
+
+        func webView(_ webView: WKWebView,
+                     runJavaScriptConfirmPanelWithMessage message: String,
+                     initiatedByFrame frame: WKFrameInfo,
+                     completionHandler: @escaping (Bool) -> Void) {
+            guard let top = Self.topController() else { completionHandler(false); return }
+            let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Annuler", style: .cancel) { _ in completionHandler(false) })
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
+            top.present(alert, animated: true)
+        }
+
+        func webView(_ webView: WKWebView,
+                     runJavaScriptTextInputPanelWithPrompt prompt: String,
+                     defaultText: String?,
+                     initiatedByFrame frame: WKFrameInfo,
+                     completionHandler: @escaping (String?) -> Void) {
+            guard let top = Self.topController() else { completionHandler(nil); return }
+            let alert = UIAlertController(title: nil, message: prompt, preferredStyle: .alert)
+            alert.addTextField { $0.text = defaultText }
+            alert.addAction(UIAlertAction(title: "Annuler", style: .cancel) { _ in completionHandler(nil) })
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+                completionHandler(alert.textFields?.first?.text)
+            })
+            top.present(alert, animated: true)
+        }
+
+        // MARK: Remplissage automatique quand la page est chargée
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             guard let host = webView.url?.host,
                   let cred = CredStore.load(host: host),
@@ -179,7 +218,8 @@ struct WebView: UIViewRepresentable {
             webView.evaluateJavaScript("(function(a){ if(window.__ilFill) window.__ilFill(a[0],a[1]); })(\(json));")
         }
 
-        // Réception d'un identifiant saisi par l'utilisateur
+        // MARK: Réception d'un identifiant saisi par l'utilisateur
+
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
             guard message.name == "cred",
