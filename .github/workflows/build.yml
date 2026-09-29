@@ -5,13 +5,17 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Voir les fichiers du dépôt
-        run: ls -la && cat project.yml
       - name: Générer le projet Xcode
         run: |
           brew install xcodegen || true
           xcodegen generate --spec project.yml
-          ls -la
+      - name: Redimensionner l'icône en 1024x1024
+        run: |
+          ICON=Sources/Assets.xcassets/AppIcon.appiconset/icon.png
+          sips -z 1024 1024 "$ICON"
+          sips -s format jpeg "$ICON" --out /tmp/icon.jpg
+          sips -s format png /tmp/icon.jpg --out "$ICON"
+          sips -g pixelWidth -g pixelHeight "$ICON"
       - name: Compiler
         run: |
           xcodebuild -project SiteApp.xcodeproj -scheme SiteApp \
