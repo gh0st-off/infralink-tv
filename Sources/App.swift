@@ -1,18 +1,29 @@
 import SwiftUI
 import WebKit
+import AVFoundation
 
 struct WebView: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> WKWebView {
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+        try? AVAudioSession.sharedInstance().setActive(true)
+
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+        config.allowsPictureInPictureMediaPlayback = true
+        config.allowsAirPlayForMediaPlayback = true
+        config.preferences.isElementFullscreenEnabled = true
+        config.preferences.javaScriptCanOpenWindowsAutomatically = true
 
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         web.uiDelegate = context.coordinator
         web.allowsBackForwardNavigationGestures = true
+        web.isOpaque = false
+        web.backgroundColor = .black
+        web.scrollView.backgroundColor = .black
         context.coordinator.webView = web
         web.load(URLRequest(url: URL(string: "https://tv.infralink.store")!))
         return web
@@ -23,31 +34,31 @@ struct WebView: UIViewRepresentable {
     class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         weak var webView: WKWebView?
 
-        func isAllowed(_ url: URL?) -> Bool {
-            guard let host = url?.host else { return true }
-            return host == "infralink.store" || host.hasSuffix(".infralink.store")
-        }
-
-        // Bloque uniquement la navigation de la page principale vers un autre site.
+        // Autorise toutes les navigations, tous les sites.
         func webView(_ webView: WKWebView,
                      decidePolicyFor action: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            let isMainFrame = action.targetFrame?.isMainFrame ?? true
-            if isMainFrame && !isAllowed(action.request.url) {
-                decisionHandler(.cancel)
+            decisionHandler(.allow)
+        }
+
+        // Accepte aussi les certificats SSL invalides (serveurs de flux mal configurés).
+        func webView(_ webView: WKWebView,
+                     didReceive challenge: URLAuthenticationChallenge,
+                     completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+            if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+               let trust = challenge.protectionSpace.serverTrust {
+                completionHandler(.useCredential, URLCredential(trust: trust))
             } else {
-                decisionHandler(.allow)
+                completionHandler(.performDefaultHandling, nil)
             }
         }
 
-        // Liens target="_blank" / window.open : ouverts dans la même vue si autorisés.
+        // Liens target="_blank" / window.open : ouverts dans la même vue.
         func webView(_ webView: WKWebView,
                      createWebViewWith configuration: WKWebViewConfiguration,
                      for action: WKNavigationAction,
                      windowFeatures: WKWindowFeatures) -> WKWebView? {
-            if isAllowed(action.request.url) {
-                webView.load(action.request)
-            }
+            webView.load(action.request)
             return nil
         }
     }
@@ -56,6 +67,10 @@ struct WebView: UIViewRepresentable {
 @main
 struct SiteApp: App {
     var body: some Scene {
-        WindowGroup { WebView().ignoresSafeArea() }
+        WindowGroup {
+            WebView()
+                .ignoresSafeArea()
+                .background(Color.black)
+        }
     }
 }
